@@ -45,12 +45,8 @@ print(ytest, yhatml)
 print(mlAcc, mlError)
 
 ## test the affects of sdg based solving scaling
-scaler = StandardScaler()
-scaler.fit(Xtrain.astype('float64'))
-#Xtrain2 = scaler.transform(Xtrain.astype('float64'))
-#Xtest2 = scaler.transform(Xtest)
 
-mlClassify2 = MLPRegressor(solver="sgd", random_state=rngSeed, max_iter=100000) #lbfgs serves to converge faster than the default adam technique
+mlClassify2 = MLPRegressor(solver="sgd", random_state=rngSeed, max_iter=100000) #sdg serves to converge faster than the default adam technique
 model2 = Pipeline([
     ('scaler' , StandardScaler()) ,
     ('model' , mlClassify2)
@@ -64,8 +60,41 @@ mlError2 = mean_absolute_error(ytest, yhatml2)
 print(ytest, yhatml2)
 print(mlAcc2, mlError2)
 
-print(ytest.to_numpy)
-#plt.plot(yhatml2)
-#plt.plot(ytest)
-#plt.plot(yhatml)
-#plt.show()
+## test the affects of Adam based solving scaling
+
+mlClassify3 = MLPRegressor(solver="adam", random_state=rngSeed, max_iter=100000) #adam serves to converge faster than the default adam technique
+model3 = Pipeline([
+    ('scaler' , StandardScaler()) ,
+    ('model' , mlClassify3)
+])
+
+model3.fit(Xtrain, ytrain)
+
+yhatml3 = model3.predict(Xtest)
+mlAcc3 = mean_squared_error(ytest, yhatml3)
+mlError3 = mean_absolute_error(ytest, yhatml3)
+print(ytest, yhatml3)
+print(mlAcc3, mlError3)
+
+print(ytest.to_numpy())
+plt.plot(ytest.to_numpy(), 'b')
+plt.plot(yhatml2, "r--" )
+plt.plot(yhatml3, "c--")
+plt.plot(yhatml, "g--")
+plt.show()
+
+#Using gridsearchCV to improve the accuracy of the best case, sdg algorythm
+from sklearn.model_selection import GridSearchCV
+cvfolds = 3
+param_grid = {
+    'model__penalty' : ['l1', 'l2'],
+    'model__C' : np.logspace(-3, 1, 10) }
+
+gs = GridSearchCV(model2, param_grid, scoring=['mean_squared_error','mean_absolute_error'], cv=cvfolds, refit='mean_squared_error')
+gs = gs.fit(Xtrain, ytrain)
+
+yhatml2v2 = gs.predict(Xtest)
+mlAcc2v2 = mean_squared_error(ytest, yhatml2v2)
+mlError2v2 = mean_absolute_error(ytest, yhatml2v2)
+
+print(mlAcc2v2, mlError2v2)
