@@ -4,6 +4,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
+from sklearn.feature_selection import SequentialFeatureSelector
+
 
 import matplotlib.pyplot as plt
 
@@ -26,7 +28,7 @@ print(desiredcolumns)
 Xtrain, Xtest, ytrain, ytest = train_test_split(practicalFile[desiredcolumns[1:]],
                                                 practicalFile[desiredcolumns[0]], 
                                                 test_size=0.2, random_state=rngSeed)
-
+"""
 print(Xtrain.astype('float64').dtypes)
 print(ytrain.dtypes)
 mlClassify = MLPRegressor(solver="lbfgs", random_state=rngSeed, max_iter=10000) #lbfgs serves to converge faster than the default adam technique
@@ -75,26 +77,41 @@ mlAcc3 = mean_squared_error(ytest, yhatml3)
 mlError3 = mean_absolute_error(ytest, yhatml3)
 print(ytest, yhatml3)
 print(mlAcc3, mlError3)
-
-print(ytest.to_numpy())
-plt.plot(ytest.to_numpy(), 'b')
-plt.plot(yhatml2, "r--" )
-plt.plot(yhatml3, "c--")
-plt.plot(yhatml, "g--")
-plt.show()
-
+"""
 #Using gridsearchCV to improve the accuracy of the best case, sdg algorythm
+
 from sklearn.model_selection import GridSearchCV
+scaler = StandardScaler()
+scaler.fit(Xtrain)
+
+scaledXtrain = scaler.transform(Xtrain)
+scaledXtest = scaler.transform(Xtest)
+
+
 cvfolds = 3
-param_grid = {
-    'model__penalty' : ['l1', 'l2'],
-    'model__C' : np.logspace(-3, 1, 10) }
 
-gs = GridSearchCV(model2, param_grid, scoring=['mean_squared_error','mean_absolute_error'], cv=cvfolds, refit='mean_squared_error')
-gs = gs.fit(Xtrain, ytrain)
+mlRegress4 = MLPRegressor(max_iter=100000, random_state=rngSeed)
 
-yhatml2v2 = gs.predict(Xtest)
+"""#feature selection
+
+SFS = SequentialFeatureSelector(mlRegress4, scoring='neg_mean_squared_error')
+print("here")
+SFS.fit(scaledXtrain, ytrain)
+print(SFS.get_support(), "done")
+
+#gridsearch"""
+
+param_grid = {"solver": ["lbfgs", "sgd", "adam"], "learning_rate" : ['constant', 'invscaling', 'adaptive']}
+
+gs = GridSearchCV(mlRegress4, param_grid, scoring='neg_mean_absolute_error', cv=cvfolds, refit='neg_mean_absolute_error')
+gs = gs.fit(scaledXtrain, ytrain)
+
+yhatml2v2 = gs.predict(scaledXtest)
 mlAcc2v2 = mean_squared_error(ytest, yhatml2v2)
 mlError2v2 = mean_absolute_error(ytest, yhatml2v2)
 
-print(mlAcc2v2, mlError2v2)
+print(mlAcc2v2, mlError2v2, gs.get_params())
+
+plt.plot(ytest.to_numpy(), 'b')
+plt.plot(yhatml2v2, "r--" )
+plt.show()
